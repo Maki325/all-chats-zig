@@ -1,0 +1,7 @@
+.{
+    .name = "combining_chats",
+    .version = "0.1.0",
+    .dependencies = .{
+    },
+    .paths =.{""}
+}

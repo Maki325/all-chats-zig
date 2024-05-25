@@ -1,3 +1,8 @@
-FLAGS="--summary all"
+ZIG_BUILD_SUMMARY_FLAG="--summary all"
 
-zig build $FLAGS && ./zig-out/bin/combining-chats
+if [[ "$*" == *"--soff"* ]]
+then
+  ZIG_BUILD_SUMMARY_FLAG=""
+fi
+
+zig build $ZIG_BUILD_SUMMARY_FLAG && ./zig-out/bin/combining-chats
