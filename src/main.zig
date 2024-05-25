@@ -11,8 +11,7 @@ pub fn main() !void {
     var bot = try Bot.init(alloc);
     defer bot.deinit();
 
-    // try bot.connect("irc");
-    // try bot.connect2();
+    try bot.connect("/");
 
     const envMap = try std.process.getEnvMap(alloc);
 
@@ -25,8 +24,6 @@ pub fn main() !void {
     try bot.write(try alloc.dupe(u8, commandCapReq));
     try bot.write(try alloc.dupe(u8, commandPass));
     try bot.write(try alloc.dupe(u8, commandNick));
-    try bot.write(try alloc.dupe(u8, "JOIN #user"));
-    try bot.write(try alloc.dupe(u8, "PRIVMSG #user :Hello"));
 
     std.time.sleep(60 * std.time.ns_per_s);
 }
