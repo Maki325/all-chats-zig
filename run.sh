@@ -5,4 +5,4 @@ then
   ZIG_BUILD_SUMMARY_FLAG=""
 fi
 
-zig build $ZIG_BUILD_SUMMARY_FLAG && ./zig-out/bin/combining-chats
+zig build -freference-trace $ZIG_BUILD_SUMMARY_FLAG && ./zig-out/bin/combining-chats

@@ -2,13 +2,27 @@ const std = @import("std");
 const dotenv = @import("dotenv");
 const builtin = @import("builtin");
 const websocket = @import("websocket");
-const Bot = @import("./Bot.zig");
-const TwitchMsg = @import("./TwitchMsg.zig");
+const TwitchBot = @import("./twitch/TwitchBot.zig");
+const TwitchMsg = @import("./twitch/TwitchMsg.zig");
+const YouTubeBot = @import("./youtube/YouTubeBot.zig");
 
-var bot: Bot = undefined;
+var bot: TwitchBot = undefined;
 var rand: std.Random = undefined;
 
 pub fn main() !void {
+    var general_purpose_allocator = std.heap.GeneralPurposeAllocator(.{}){};
+    const alloc = general_purpose_allocator.allocator();
+
+    try dotenv.load(alloc, .{});
+
+    var youtubeBot = try YouTubeBot.init(alloc, "ZIpmrYAzWCU");
+    defer youtubeBot.deinit();
+
+    var is_running = true;
+    try youtubeBot.run(&is_running);
+}
+
+fn runTwitchBot() !void {
     var prng = std.rand.DefaultPrng.init(blk: {
         var seed: u64 = undefined;
         try std.posix.getrandom(std.mem.asBytes(&seed));
@@ -21,7 +35,7 @@ pub fn main() !void {
 
     try dotenv.load(alloc, .{});
 
-    bot = try Bot.init(alloc, handleTwitchMsg);
+    bot = try TwitchBot.init(alloc, handleTwitchMsg);
     defer bot.deinit();
 
     try bot.handshake("/");

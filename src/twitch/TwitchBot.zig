@@ -2,7 +2,7 @@ const std = @import("std");
 const websocket = @import("websocket");
 const TwitchMsg = @import("TwitchMsg.zig");
 
-const Bot = @This();
+const TwitchBot = @This();
 
 const TWITCH_ADDRESS = "irc-ws.chat.twitch.tv";
 const TWITCH_PORT = 80;
@@ -11,7 +11,7 @@ alloc: std.mem.Allocator,
 client: websocket.Client,
 handleTwitchMsg: *const fn (TwitchMsg) void,
 
-pub fn init(alloc: std.mem.Allocator, handleTwitchMsg: *const fn (TwitchMsg) void) !Bot {
+pub fn init(alloc: std.mem.Allocator, handleTwitchMsg: *const fn (TwitchMsg) void) !TwitchBot {
     return .{
         .alloc = alloc,
         .handleTwitchMsg = handleTwitchMsg,
@@ -19,24 +19,24 @@ pub fn init(alloc: std.mem.Allocator, handleTwitchMsg: *const fn (TwitchMsg) voi
     };
 }
 
-pub fn deinit(self: *Bot) void {
+pub fn deinit(self: *TwitchBot) void {
     self.client.deinit();
 }
 
-pub fn handshake(self: *Bot, path: []const u8) !void {
+pub fn handshake(self: *TwitchBot, path: []const u8) !void {
     try self.client.handshake(path, .{
         .timeout_ms = 5000,
         .headers = try self.alloc.dupe(u8, "Host: " ++ TWITCH_ADDRESS),
     });
 }
 
-pub fn write(self: *Bot, data: []u8) !void {
+pub fn write(self: *TwitchBot, data: []u8) !void {
     return self.client.write(data);
 }
 
 // Interface for WebSocket to use
 
-pub fn handle(self: Bot, wsMsg: websocket.Message) !void {
+pub fn handle(self: TwitchBot, wsMsg: websocket.Message) !void {
     const data = wsMsg.data;
 
     var it = std.mem.split(u8, data, "\r\n");
@@ -49,8 +49,8 @@ pub fn handle(self: Bot, wsMsg: websocket.Message) !void {
     }
 }
 
-pub fn close(_: Bot) void {
-    std.debug.print("CLOSED\n", .{});
+pub fn close(_: TwitchBot) void {
+    std.debug.print("Closed TwitchBot\n", .{});
 }
 
 // End of WebSocket Interface
