@@ -38,4 +38,11 @@ pub fn build(b: *std.Build) void {
         .target = b.host,
     }), modules);
     b.installArtifact(bot_twitch);
+
+    const bot_youtube = b.addExecutable(.{
+        .name = "bot-youtube",
+        .root_source_file = b.path("src/youtube/main.zig"),
+        .target = b.host,
+    });
+    b.installArtifact(bot_youtube);
 }
