@@ -2,10 +2,13 @@ const std = @import("std");
 
 const TwitchMsg = @This();
 
+const TagMap = std.StringHashMap(?[]const u8);
+
 alloc: std.mem.Allocator,
 msg: []const u8,
 
 tags: ?[]const u8,
+tag_map: TagMap,
 source: ?Source,
 sourceRaw: ?[]const u8,
 cmd: Cmd,
@@ -18,12 +21,14 @@ pub fn init(alloc: std.mem.Allocator, msgPtr: *const []const u8) !TwitchMsg {
     var msgParts = std.mem.split(u8, msg, " ");
 
     var tags: ?[]const u8 = null;
+    var tag_map: TagMap = TagMap.init(alloc);
 
     if (msg[0] == '@') {
         tags = msgParts.next() orelse {
             std.debug.print("No `tags` in message: \"{s}\"", .{msg});
             return error.NoTags;
         };
+        try parseTags(&tag_map, tags.?[1..]);
     }
 
     var sourceRaw: ?[]const u8 = null;
@@ -78,6 +83,7 @@ pub fn init(alloc: std.mem.Allocator, msgPtr: *const []const u8) !TwitchMsg {
         .msg = msg,
 
         .tags = tags,
+        .tag_map = tag_map,
         .source = source,
         .sourceRaw = sourceRaw,
         .cmd = cmd,
@@ -104,8 +110,9 @@ pub fn printRaw(self: *const TwitchMsg) void {
     });
 }
 
-pub fn deinit(self: TwitchMsg) void {
+pub fn deinit(self: *TwitchMsg) void {
     self.alloc.free(self.msg);
+    self.tag_map.deinit();
 }
 
 const Cmd = enum(u8) {
@@ -138,3 +145,17 @@ const Source = union(SourceTypes) {
     host: []const u8, //
     hostAndNick: HostAndNick,
 };
+
+fn parseTags(map: *TagMap, tags_str: []const u8) !void {
+    var tags = std.mem.split(u8, tags_str, ";");
+    while (tags.next()) |tag| {
+        var parts = std.mem.split(u8, tag, "=");
+
+        const tag_name = parts.next() orelse {
+            continue;
+        };
+        const tag_value = parts.next();
+
+        try map.put(tag_name, tag_value);
+    }
+}

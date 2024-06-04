@@ -1,19 +1,41 @@
 const std = @import("std");
 
-pub fn build(b: *std.Build) void {
-    const websocket = b.addModule("websocket", .{ .root_source_file = .{ .path = "./deps/websocket.zig/src/websocket.zig" } });
-    const dotenv = b.addModule("dotenv", .{ .root_source_file = .{ .path = "./deps/dotenv/lib.zig" } });
+const NamedModule = struct {
+    name: []const u8,
+    module: *std.Build.Module,
+};
 
-    const exe = b.addExecutable(.{
-        .name = "combining-chats",
-        .root_source_file = b.path("src/main.zig"),
-        .target = b.host,
-    });
+pub fn addModules(exe: *std.Build.Step.Compile, modules: []const NamedModule) *std.Build.Step.Compile {
+    for (modules) |module| {
+        exe.root_module.addImport(module.name, module.module);
+    }
 
-    exe.root_module.addImport("websocket", websocket);
-    exe.root_module.addImport("dotenv", dotenv);
     // For modifying environment variables with dotenv
     exe.linkSystemLibrary("c");
 
-    b.installArtifact(exe);
+    return exe;
+}
+
+pub fn build(b: *std.Build) void {
+    const modules: []const NamedModule = &[_]NamedModule{ .{
+        .name = "websocket",
+        .module = b.addModule("websocket", .{ .root_source_file = .{ .path = "./deps/websocket.zig/src/websocket.zig" } }),
+    }, .{
+        .name = "dotenv",
+        .module = b.addModule("dotenv", .{ .root_source_file = .{ .path = "./deps/dotenv/lib.zig" } }),
+    } };
+
+    const combining_chats = addModules(b.addExecutable(.{
+        .name = "combining-chats",
+        .root_source_file = b.path("src/main.zig"),
+        .target = b.host,
+    }), modules);
+    b.installArtifact(combining_chats);
+
+    const bot_twitch = addModules(b.addExecutable(.{
+        .name = "bot-twitch",
+        .root_source_file = b.path("src/twitch/main.zig"),
+        .target = b.host,
+    }), modules);
+    b.installArtifact(bot_twitch);
 }

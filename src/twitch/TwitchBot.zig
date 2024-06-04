@@ -7,11 +7,14 @@ const TwitchBot = @This();
 const TWITCH_ADDRESS = "irc-ws.chat.twitch.tv";
 const TWITCH_PORT = 80;
 
+pub const HandleTwitchMsgFnError = error{GeneralError};
+const HandleTwitchMsgFn = *const fn (*TwitchBot, *TwitchMsg) HandleTwitchMsgFnError!void;
+
 alloc: std.mem.Allocator,
 client: websocket.Client,
-handleTwitchMsg: *const fn (TwitchMsg) void,
+handleTwitchMsg: HandleTwitchMsgFn,
 
-pub fn init(alloc: std.mem.Allocator, handleTwitchMsg: *const fn (TwitchMsg) void) !TwitchBot {
+pub fn init(alloc: std.mem.Allocator, handleTwitchMsg: HandleTwitchMsgFn) !TwitchBot {
     return .{
         .alloc = alloc,
         .handleTwitchMsg = handleTwitchMsg,
@@ -36,7 +39,13 @@ pub fn write(self: *TwitchBot, data: []u8) !void {
 
 // Interface for WebSocket to use
 
-pub fn handle(self: TwitchBot, wsMsg: websocket.Message) !void {
+pub fn handle(self: *TwitchBot, wsMsg: websocket.Message) !void {
+    handleImpl(self, wsMsg) catch |e| {
+        std.log.err("Got error ({any}) handling ws message: {any}\n", .{ e, wsMsg });
+    };
+}
+
+pub fn handleImpl(self: *TwitchBot, wsMsg: websocket.Message) !void {
     const data = wsMsg.data;
 
     var it = std.mem.split(u8, data, "\r\n");
@@ -45,7 +54,11 @@ pub fn handle(self: TwitchBot, wsMsg: websocket.Message) !void {
             continue;
         }
 
-        self.handleTwitchMsg(try TwitchMsg.init(self.alloc, &line));
+        var msg = try TwitchMsg.init(self.alloc, &line);
+        defer msg.deinit();
+        self.handleTwitchMsg(self, &msg) catch |e| {
+            std.log.err("Got error ({any}) handling twitch msg: {any}\n", .{ e, msg });
+        };
     }
 }
 
