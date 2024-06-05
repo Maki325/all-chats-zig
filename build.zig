@@ -17,13 +17,17 @@ pub fn addModules(exe: *std.Build.Step.Compile, modules: []const NamedModule) *s
 }
 
 pub fn build(b: *std.Build) void {
+    const protocol = NamedModule{
+        .name = "protocol",
+        .module = b.addModule("protocol", .{ .root_source_file = .{ .path = "./src/protocol/lib.zig" } }),
+    };
     const modules: []const NamedModule = &[_]NamedModule{ .{
         .name = "websocket",
         .module = b.addModule("websocket", .{ .root_source_file = .{ .path = "./deps/websocket.zig/src/websocket.zig" } }),
     }, .{
         .name = "dotenv",
         .module = b.addModule("dotenv", .{ .root_source_file = .{ .path = "./deps/dotenv/lib.zig" } }),
-    } };
+    }, protocol };
 
     const combining_chats = addModules(b.addExecutable(.{
         .name = "combining-chats",
@@ -39,10 +43,10 @@ pub fn build(b: *std.Build) void {
     }), modules);
     b.installArtifact(bot_twitch);
 
-    const bot_youtube = b.addExecutable(.{
+    const bot_youtube = addModules(b.addExecutable(.{
         .name = "bot-youtube",
         .root_source_file = b.path("src/youtube/main.zig"),
         .target = b.host,
-    });
+    }), &.{protocol});
     b.installArtifact(bot_youtube);
 }
