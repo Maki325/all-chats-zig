@@ -1,6 +1,10 @@
 const std = @import("std");
 const dotenv = @import("dotenv");
-const YouTubeBot = @import("./youtube/YouTubeBot.zig");
+const websocket = @import("websocket");
+const sqlite = @import("sqlite");
+const Handler = @import("./Handler.zig");
+const Context = @import("./Context.zig");
+const Server = @import("./Server.zig");
 
 pub fn main() !void {
     var general_purpose_allocator = std.heap.GeneralPurposeAllocator(.{}){};
@@ -8,9 +12,5 @@ pub fn main() !void {
 
     try dotenv.load(alloc, .{});
 
-    var youtubeBot = try YouTubeBot.init(alloc, "ZIpmrYAzWCU");
-    defer youtubeBot.deinit();
-
-    var is_running = true;
-    try youtubeBot.run(&is_running);
+    try Server.run(alloc);
 }

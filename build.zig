@@ -29,12 +29,22 @@ pub fn build(b: *std.Build) void {
         .module = b.addModule("dotenv", .{ .root_source_file = .{ .path = "./deps/dotenv/lib.zig" } }),
     }, protocol };
 
-    const combining_chats = addModules(b.addExecutable(.{
+    const server = addModules(b.addExecutable(.{
         .name = "combining-chats",
-        .root_source_file = b.path("src/main.zig"),
+        .root_source_file = b.path("src/server/main.zig"),
         .target = b.host,
     }), modules);
-    b.installArtifact(combining_chats);
+    {
+        const sqlite = b.dependency("sqlite", .{
+            .target = b.host,
+        });
+
+        server.root_module.addImport("sqlite", sqlite.module("sqlite"));
+
+        // links the bundled sqlite3, so leave this out if you link the system one
+        server.linkLibrary(sqlite.artifact("sqlite"));
+    }
+    b.installArtifact(server);
 
     const bot_twitch = addModules(b.addExecutable(.{
         .name = "bot-twitch",

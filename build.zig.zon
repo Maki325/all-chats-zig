@@ -2,6 +2,10 @@
     .name = "combining_chats",
     .version = "0.1.0",
     .dependencies = .{
+        .sqlite = .{
+            .url = "https://github.com/vrischmann/zig-sqlite/archive/fd17eb9a4ea35f515cc7c2e4755a3a5e284a0bd3.tar.gz",
+            .hash = "1220e0300613f2b949a8328c5b1d9ba84777f2258c1535039afcb536e9e1228d2881",
+        },
     },
     .paths =.{""}
 }
