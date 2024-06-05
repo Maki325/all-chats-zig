@@ -6,12 +6,14 @@ const TwitchBot = @This();
 
 const TWITCH_ADDRESS = "irc-ws.chat.twitch.tv";
 const TWITCH_PORT = 80;
+const TWITCH_HANDSHAKE_PATH = "/";
 
 pub const HandleTwitchMsgFnError = error{GeneralError};
 const HandleTwitchMsgFn = *const fn (*TwitchBot, *TwitchMsg) HandleTwitchMsgFnError!void;
 
 alloc: std.mem.Allocator,
 client: websocket.Client,
+aggregator_client: websocket.Client,
 handleTwitchMsg: HandleTwitchMsgFn,
 
 pub fn init(alloc: std.mem.Allocator, handleTwitchMsg: HandleTwitchMsgFn) !TwitchBot {
@@ -19,17 +21,25 @@ pub fn init(alloc: std.mem.Allocator, handleTwitchMsg: HandleTwitchMsgFn) !Twitc
         .alloc = alloc,
         .handleTwitchMsg = handleTwitchMsg,
         .client = try websocket.connect(alloc, TWITCH_ADDRESS, TWITCH_PORT, .{}),
+        .aggregator_client = try websocket.connect(alloc, "localhost", 9223, .{}),
     };
 }
 
 pub fn deinit(self: *TwitchBot) void {
+    self.aggregator_client.deinit();
     self.client.deinit();
 }
 
-pub fn handshake(self: *TwitchBot, path: []const u8) !void {
-    try self.client.handshake(path, .{
+pub fn handshakeTwitch(self: *TwitchBot) !void {
+    try self.client.handshake(TWITCH_HANDSHAKE_PATH, .{
         .timeout_ms = 5000,
         .headers = try self.alloc.dupe(u8, "Host: " ++ TWITCH_ADDRESS),
+    });
+}
+
+pub fn handshakeAggregator(self: *TwitchBot) !void {
+    try self.aggregator_client.handshake("/", .{
+        .timeout_ms = 5000,
     });
 }
 
@@ -62,7 +72,8 @@ pub fn handleImpl(self: *TwitchBot, wsMsg: websocket.Message) !void {
     }
 }
 
-pub fn close(_: TwitchBot) void {
+pub fn close(self: *TwitchBot) void {
+    self.aggregator_client.close();
     std.debug.print("Closed TwitchBot\n", .{});
 }
 

@@ -1,6 +1,7 @@
 const std = @import("std");
 const dotenv = @import("dotenv");
 const builtin = @import("builtin");
+const protocol = @import("protocol");
 const TwitchBot = @import("./TwitchBot.zig");
 const TwitchMsg = @import("./TwitchMsg.zig");
 
@@ -23,7 +24,8 @@ pub fn main() !void {
     g_bot = try TwitchBot.init(alloc, handleTwitchMsg);
     defer g_bot.deinit();
 
-    try g_bot.handshake("/");
+    try g_bot.handshakeTwitch();
+    try g_bot.handshakeAggregator();
 
     const envMap = try std.process.getEnvMap(alloc);
 
@@ -57,6 +59,33 @@ fn handleTwitchMsg(bot: *TwitchBot, msg: *TwitchMsg) TwitchBot.HandleTwitchMsgFn
         .Privmsg => {
             const index = std.mem.indexOf(u8, msg.args, ":") orelse return;
             const text = msg.args[(index + 1)..];
+
+            const author: ?[]const u8 = if (msg.tag_map.get("display-name")) |value|
+                if (value) |author| author else null
+            else
+                null;
+
+            const timestamp: ?i64 = if (msg.tag_map.get("tmi-sent-ts")) |value|
+                if (value) |ts| std.fmt.parseInt(i64, ts, 10) catch null else null
+            else
+                null;
+
+            if (author != null and timestamp != null) {
+                var writer = protocol.Writer.init(bot.alloc);
+                defer writer.deinit();
+                (protocol.messages.ToServer.Message{
+                    .AddMessage = protocol.messages.ToServer.AddMessage{
+                        .author = author.?,
+                        .message = text,
+                        .platform = .Twitch,
+                        .timestamp = timestamp.?,
+                    },
+                }).serialize(&writer) catch {
+                    return error.GeneralError;
+                };
+
+                bot.aggregator_client.writeBin(writer.data.items) catch return error.GeneralError;
+            }
 
             if (std.mem.startsWith(u8, text, "!dice")) {
                 var space: [32]u8 = undefined;
