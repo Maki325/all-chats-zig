@@ -42,13 +42,26 @@ fn handleImpl(self: *Handler, message: websocket.Message) !void {
 
     switch (msg) {
         .AddMessage => |add_msg| {
-            std.debug.print("Platform: {s}\n", .{@tagName(add_msg.platform)});
-            std.debug.print("Author: {s}\n", .{add_msg.author});
-            std.debug.print("Message: {s}\n", .{add_msg.message});
-            std.debug.print("TimeStamp: {d}\n", .{add_msg.timestamp});
-
             const query =
-                \\INSERT INTO messages (platform, author, message, timestamp) VALUES (?, ?, ?, ?)
+                \\INSERT INTO messages (
+                \\  platform,
+                \\  platformMessageId,
+                \\  channelId,
+                \\  authorId,
+                \\  author,
+                \\  message,
+                \\  timestamp,
+                \\  timestampType
+                \\) VALUES (
+                \\  ?,
+                \\  ?,
+                \\  ?,
+                \\  ?,
+                \\  ?,
+                \\  ?,
+                \\  ?,
+                \\  ?
+                \\)
             ;
 
             var stmt = try self.context.db.prepare(query);
@@ -56,9 +69,13 @@ fn handleImpl(self: *Handler, message: websocket.Message) !void {
 
             try stmt.exec(.{}, .{
                 .platform = @intFromEnum(add_msg.platform),
+                .platformMessageId = add_msg.platform_message_id,
+                .channelId = add_msg.channel_id,
+                .authorId = add_msg.author_id,
                 .author = add_msg.author,
                 .message = add_msg.message,
                 .timestamp = add_msg.timestamp,
+                .timestampType = @intFromEnum(add_msg.timestamp_type),
             });
 
             const id = self.context.db.getLastInsertRowID();
@@ -68,9 +85,13 @@ fn handleImpl(self: *Handler, message: websocket.Message) !void {
             try (protocol.messages.ToClient.Message{
                 .AddMessage = protocol.messages.ToClient.AddMessage{
                     .id = id,
-                    .author = add_msg.author,
-                    .message = add_msg.message,
                     .platform = add_msg.platform,
+                    .platform_message_id = add_msg.platform_message_id,
+                    .channel_id = add_msg.channel_id,
+                    .author = add_msg.author,
+                    .author_id = add_msg.author_id,
+                    .message = add_msg.message,
+                    .timestamp_type = add_msg.timestamp_type,
                     .timestamp = add_msg.timestamp,
                 },
             }).serialize(&writer);

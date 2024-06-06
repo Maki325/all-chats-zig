@@ -60,6 +60,11 @@ fn handleTwitchMsg(bot: *TwitchBot, msg: *TwitchMsg) TwitchBot.HandleTwitchMsgFn
             const index = std.mem.indexOf(u8, msg.args, ":") orelse return;
             const text = msg.args[(index + 1)..];
 
+            const user_id: ?[]const u8 = if (msg.tag_map.get("user-id")) |value|
+                if (value) |author| author else null
+            else
+                null;
+
             const author: ?[]const u8 = if (msg.tag_map.get("display-name")) |value|
                 if (value) |author| author else null
             else
@@ -70,14 +75,29 @@ fn handleTwitchMsg(bot: *TwitchBot, msg: *TwitchMsg) TwitchBot.HandleTwitchMsgFn
             else
                 null;
 
-            if (author != null and timestamp != null) {
+            const msg_id: ?[]const u8 = if (msg.tag_map.get("id")) |value|
+                if (value) |id| id else null
+            else
+                null;
+
+            const room_id: ?[]const u8 = if (msg.tag_map.get("room-id")) |value|
+                if (value) |room_id| room_id else null
+            else
+                null;
+
+            if (author != null and timestamp != null and msg_id != null and user_id != null and room_id != null) {
                 var writer = protocol.Writer.init(bot.alloc);
                 defer writer.deinit();
                 (protocol.messages.ToServer.Message{
                     .AddMessage = protocol.messages.ToServer.AddMessage{
+                        .platform = .Twitch,
+                        .platform_message_id = msg_id.?,
+                        // https://dev.twitch.tv/docs/api/reference/#get-channel-information
+                        .channel_id = room_id.?,
+                        .author_id = user_id.?,
                         .author = author.?,
                         .message = text,
-                        .platform = .Twitch,
+                        .timestamp_type = .Milisecond,
                         .timestamp = timestamp.?,
                     },
                 }).serialize(&writer) catch {

@@ -268,16 +268,17 @@ fn fetchActions(self: *YouTubeBot) !void {
         for (as.items) |action| {
             const item = Traverse.traverse(Traverse.ActionItem, action, Traverse.getActionItem) orelse continue;
 
-            if (getString(item.action.get("id"))) |id| {
-                if (self.seen_msgs.contains(id)) {
-                    continue;
-                }
-                try self.seen_msgs.put(try self.alloc.dupe(u8, id), current_time_ms);
+            const id = getString(item.action.get("id")) orelse continue;
+            if (self.seen_msgs.contains(id)) {
+                continue;
             }
+            self.seen_msgs.put(try self.alloc.dupe(u8, id), current_time_ms) catch continue;
 
             if (std.mem.eql(u8, item.action_type, "addChatItemAction") and
                 std.mem.eql(u8, item.item_type, "liveChatTextMessageRenderer"))
             {
+                const channel_id = getString(item.action.get("authorExternalChannelId")) orelse continue;
+
                 const author_obj = getObject(item.action.get("authorName")) orelse continue;
                 const author = getString(author_obj.get("simpleText")) orelse continue;
 
@@ -301,10 +302,13 @@ fn fetchActions(self: *YouTubeBot) !void {
                 defer writer.deinit();
                 (protocol.messages.ToServer.Message{
                     .AddMessage = protocol.messages.ToServer.AddMessage{
+                        .platform = .YouTube,
+                        .platform_message_id = id,
+                        .channel_id = self.channel_id,
+                        .author_id = channel_id,
                         .author = author,
                         .message = msg_text.items,
-                        .platform = .YouTube,
-                        // Microseconds
+                        .timestamp_type = .Microsecond,
                         .timestamp = timestamp_microseconds,
                     },
                 }).serialize(&writer) catch continue;

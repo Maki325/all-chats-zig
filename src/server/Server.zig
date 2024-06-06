@@ -31,13 +31,23 @@ pub fn run(alloc: std.mem.Allocator) !void {
     try websocket.listen(Handler, alloc, &context, .{
         .port = 9223,
         .max_headers = 10,
-        .address = "127.0.0.1",
+        .address = "0.0.0.0",
     });
 }
 
 fn initDb(db: *sqlite.Db) !void {
     const query =
-        \\CREATE TABLE IF NOT EXISTS messages(id INTEGER PRIMARY KEY, platform INT NOT NULL, author TEXT NOT NULL, message TEXT NOT NULL, timestamp INTEGER NOT NULL);
+        \\CREATE TABLE IF NOT EXISTS messages(
+        \\  id INTEGER PRIMARY KEY,
+        \\  platform INT NOT NULL,
+        \\  platformMessageId TEXT NOT NULL,
+        \\  channelId TEXT NOT NULL,
+        \\  authorId TEXT NOT NULL,
+        \\  author TEXT NOT NULL,
+        \\  message TEXT NOT NULL,
+        \\  timestamp INTEGER NOT NULL,
+        \\  timestampType INTEGER NOT NULL
+        \\);
     ;
 
     var stmt = try db.prepare(query);
