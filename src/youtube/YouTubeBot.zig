@@ -1,4 +1,6 @@
 const std = @import("std");
+const websocket = @import("websocket");
+const protocol = @import("protocol");
 const Traverse = @import("Traverse.zig");
 
 const TimeMs = i64;
@@ -8,6 +10,7 @@ const YouTubeBot = @This();
 
 alloc: std.mem.Allocator,
 client: std.http.Client,
+aggregator_client: websocket.Client,
 
 inner_tube_api_key: []const u8,
 inner_tube_ctx: std.json.Parsed(std.json.Value),
@@ -166,6 +169,7 @@ pub fn init(alloc: std.mem.Allocator, stream_id: []const u8) !YouTubeBot {
         .continuation_token = continuation_token,
         .client = client,
         .seen_msgs = SeenMsgsMap.init(alloc),
+        .aggregator_client = try websocket.connect(alloc, "localhost", 9223, .{}),
     };
 }
 
@@ -177,6 +181,11 @@ pub fn deinit(self: *YouTubeBot) void {
 }
 
 pub fn run(self: *YouTubeBot, running: *bool) !void {
+    try self.aggregator_client.handshake("/", .{
+        .timeout_ms = 5000,
+    });
+    std.debug.print("Started YouTube bot!\n", .{});
+
     var i: usize = 0;
     while (running.*) {
         // 1 minute has passed
@@ -269,8 +278,11 @@ fn fetchActions(self: *YouTubeBot) !void {
             if (std.mem.eql(u8, item.action_type, "addChatItemAction") and
                 std.mem.eql(u8, item.item_type, "liveChatTextMessageRenderer"))
             {
-                const author_obj = getObject(item.action.get("authorName"));
-                const author = getString(author_obj.?.get("simpleText")) orelse "Unknown";
+                const author_obj = getObject(item.action.get("authorName")) orelse continue;
+                const author = getString(author_obj.get("simpleText")) orelse continue;
+
+                const ts_text = getString(item.action.get("timestampUsec")) orelse continue;
+                const timestamp_microseconds = std.fmt.parseInt(i64, ts_text, 10) catch continue;
 
                 const msg = getObject(item.action.get("message")) orelse continue;
                 const runs = getArray(msg.get("runs")) orelse continue;
@@ -284,6 +296,20 @@ fn fetchActions(self: *YouTubeBot) !void {
                 }
 
                 std.debug.print("{s}: {s}\n", .{ author, msg_text.items });
+
+                var writer = protocol.Writer.init(self.alloc);
+                defer writer.deinit();
+                (protocol.messages.ToServer.Message{
+                    .AddMessage = protocol.messages.ToServer.AddMessage{
+                        .author = author,
+                        .message = msg_text.items,
+                        .platform = .YouTube,
+                        // Microseconds
+                        .timestamp = timestamp_microseconds,
+                    },
+                }).serialize(&writer) catch continue;
+
+                self.aggregator_client.writeBin(writer.data.items) catch continue;
             }
         }
     }

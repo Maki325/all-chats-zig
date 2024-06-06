@@ -21,10 +21,11 @@ pub fn build(b: *std.Build) void {
         .name = "protocol",
         .module = b.addModule("protocol", .{ .root_source_file = .{ .path = "./src/protocol/lib.zig" } }),
     };
-    const modules: []const NamedModule = &[_]NamedModule{ .{
+    const websocket = NamedModule{
         .name = "websocket",
         .module = b.addModule("websocket", .{ .root_source_file = .{ .path = "./deps/websocket.zig/src/websocket.zig" } }),
-    }, .{
+    };
+    const modules: []const NamedModule = &[_]NamedModule{ websocket, .{
         .name = "dotenv",
         .module = b.addModule("dotenv", .{ .root_source_file = .{ .path = "./deps/dotenv/lib.zig" } }),
     }, protocol };
@@ -57,6 +58,6 @@ pub fn build(b: *std.Build) void {
         .name = "bot-youtube",
         .root_source_file = b.path("src/youtube/main.zig"),
         .target = b.host,
-    }), &.{protocol});
+    }), &.{ protocol, websocket });
     b.installArtifact(bot_youtube);
 }
