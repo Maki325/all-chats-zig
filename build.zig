@@ -46,6 +46,11 @@ pub fn build(b: *std.Build) void {
         server.linkLibrary(sqlite.artifact("sqlite"));
     }
     b.installArtifact(server);
+    {
+        const run_server = b.addRunArtifact(server);
+        const run_server_step = b.step("run-server", "Run the application");
+        run_server_step.dependOn(&run_server.step);
+    }
 
     const bot_twitch = addModules(b.addExecutable(.{
         .name = "bot-twitch",
@@ -53,6 +58,11 @@ pub fn build(b: *std.Build) void {
         .target = b.host,
     }), modules);
     b.installArtifact(bot_twitch);
+    {
+        const run_twitch = b.addRunArtifact(bot_twitch);
+        const run_twitch_step = b.step("run-twitch", "Run the application");
+        run_twitch_step.dependOn(&run_twitch.step);
+    }
 
     const bot_youtube = addModules(b.addExecutable(.{
         .name = "bot-youtube",
@@ -60,4 +70,12 @@ pub fn build(b: *std.Build) void {
         .target = b.host,
     }), &.{ protocol, websocket });
     b.installArtifact(bot_youtube);
+    {
+        const run_youtube = b.addRunArtifact(bot_youtube);
+        if (b.args) |args| {
+            run_youtube.addArgs(args);
+        }
+        const run_youtube_step = b.step("run-youtube", "Run the application");
+        run_youtube_step.dependOn(&run_youtube.step);
+    }
 }
