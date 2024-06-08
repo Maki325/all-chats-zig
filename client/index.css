@@ -6,11 +6,14 @@ html, body {
     background-color: transparent;
 }
 
-#container {
+main {
     width: 340px;
     padding: 5px;
     background-color: #121212F0;
     min-height: calc(100vh - 10px);
+
+    display: flex;
+    flex-direction: column-reverse;
 }
 
 .msg {
