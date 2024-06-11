@@ -6,6 +6,14 @@
             .url = "https://github.com/vrischmann/zig-sqlite/archive/fd17eb9a4ea35f515cc7c2e4755a3a5e284a0bd3.tar.gz",
             .hash = "1220e0300613f2b949a8328c5b1d9ba84777f2258c1535039afcb536e9e1228d2881",
         },
+        .httpz = .{
+            .url = "https://github.com/karlseguin/http.zig/archive/79dad0f0cc652830cd8e49bf3e73aa77155ad4b2.tar.gz",
+            .hash = "1220b8a918dfcee4fc8326ec337776e2ffd3029511c35f6b96d10aa7be98ca2faf99",
+        },
+        .websocket = .{
+            .url = "https://github.com/karlseguin/websocket.zig/archive/6e355261b12eb9781991f2b0b02947cdef884f12.tar.gz",
+            .hash = "1220a50d663f8faee47f5aafdd57e29f1330e56977e33154c92a3fb5a0c61f5a1fff",
+        },
     },
     .paths =.{""}
 }

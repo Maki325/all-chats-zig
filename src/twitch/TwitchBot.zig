@@ -21,7 +21,7 @@ pub fn init(alloc: std.mem.Allocator, handleTwitchMsg: HandleTwitchMsgFn) !Twitc
         .alloc = alloc,
         .handleTwitchMsg = handleTwitchMsg,
         .client = try websocket.connect(alloc, TWITCH_ADDRESS, TWITCH_PORT, .{}),
-        .aggregator_client = try websocket.connect(alloc, "localhost", 9223, .{}),
+        .aggregator_client = try websocket.connect(alloc, "localhost", 5882, .{}),
     };
 }
 
@@ -38,7 +38,7 @@ pub fn handshakeTwitch(self: *TwitchBot) !void {
 }
 
 pub fn handshakeAggregator(self: *TwitchBot) !void {
-    try self.aggregator_client.handshake("/", .{
+    try self.aggregator_client.handshake("/ws", .{
         .timeout_ms = 5000,
     });
 }

@@ -23,18 +23,22 @@ pub fn build(b: *std.Build) void {
     };
     const websocket = NamedModule{
         .name = "websocket",
-        .module = b.addModule("websocket", .{ .root_source_file = .{ .path = "./deps/websocket.zig/src/websocket.zig" } }),
+        .module = b.dependency("websocket", .{}).module("websocket"),
     };
-    const modules: []const NamedModule = &[_]NamedModule{ websocket, .{
+    const httpz = NamedModule{
+        .name = "httpz",
+        .module = b.dependency("httpz", .{}).module("httpz"),
+    };
+    const dotenv = NamedModule{
         .name = "dotenv",
         .module = b.addModule("dotenv", .{ .root_source_file = .{ .path = "./deps/dotenv/lib.zig" } }),
-    }, protocol };
+    };
 
     const server = addModules(b.addExecutable(.{
         .name = "combining-chats",
         .root_source_file = b.path("src/server/main.zig"),
         .target = b.host,
-    }), modules);
+    }), &.{ protocol, httpz, dotenv });
     {
         const sqlite = b.dependency("sqlite", .{
             .target = b.host,
@@ -56,7 +60,7 @@ pub fn build(b: *std.Build) void {
         .name = "bot-twitch",
         .root_source_file = b.path("src/twitch/main.zig"),
         .target = b.host,
-    }), modules);
+    }), &.{ protocol, websocket, dotenv });
     b.installArtifact(bot_twitch);
     {
         const run_twitch = b.addRunArtifact(bot_twitch);

@@ -1,5 +1,5 @@
 const std = @import("std");
-const websocket = @import("websocket");
+const websocket = @import("httpz").websocket;
 const Context = @import("Context.zig");
 const protocol = @import("protocol");
 
@@ -8,8 +8,8 @@ const Handler = @This();
 conn: *websocket.Conn,
 context: *Context,
 
-pub fn init(_: websocket.Handshake, conn: *websocket.Conn, context: *Context) !Handler {
-    try context.addConn(conn);
+pub fn init(conn: *websocket.Conn, context: *Context) !Handler {
+    try context.addWsConn(conn);
     return Handler{
         .conn = conn,
         .context = context,
@@ -96,13 +96,13 @@ fn handleImpl(self: *Handler, message: websocket.Message) !void {
                 },
             }).serialize(&writer);
 
-            try self.context.writeToAll(self.conn, writer.data.items);
+            try self.context.writeToAllWs(self.conn, writer.data.items);
         },
     }
 }
 
 // called whenever the connection is closed, can do some cleanup in here
 pub fn close(self: *Handler) void {
-    self.context.removeConn(self.conn);
+    self.context.removeWsConn(self.conn);
     std.debug.print("Closed: {any}\n", .{self});
 }

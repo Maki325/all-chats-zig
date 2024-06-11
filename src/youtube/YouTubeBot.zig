@@ -169,7 +169,7 @@ pub fn init(alloc: std.mem.Allocator, stream_id: []const u8) !YouTubeBot {
         .continuation_token = continuation_token,
         .client = client,
         .seen_msgs = SeenMsgsMap.init(alloc),
-        .aggregator_client = try websocket.connect(alloc, "localhost", 9223, .{}),
+        .aggregator_client = try websocket.connect(alloc, "localhost", 5882, .{}),
     };
 }
 
@@ -181,7 +181,7 @@ pub fn deinit(self: *YouTubeBot) void {
 }
 
 pub fn run(self: *YouTubeBot, running: *bool) !void {
-    try self.aggregator_client.handshake("/", .{
+    try self.aggregator_client.handshake("/ws", .{
         .timeout_ms = 5000,
     });
     std.debug.print("Started YouTube bot!\n", .{});

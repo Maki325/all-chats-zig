@@ -1,5 +1,5 @@
 const std = @import("std");
-const websocket = @import("websocket");
+const websocket = @import("httpz").websocket;
 const sqlite = @import("sqlite");
 
 const Context = @This();
@@ -9,31 +9,31 @@ pub const Connections = std.ArrayList(*websocket.Conn);
 alloc: std.mem.Allocator,
 db: sqlite.Db,
 mutex: std.Thread.Mutex,
-connections: Connections,
+wsConnections: Connections,
 
-pub fn addConn(self: *Context, conn: *websocket.Conn) !void {
+pub fn addWsConn(self: *Context, conn: *websocket.Conn) !void {
     self.mutex.lock();
     defer self.mutex.unlock();
 
-    try self.connections.append(conn);
+    try self.wsConnections.append(conn);
 }
 
-pub fn removeConn(self: *Context, conn_to_remove: *websocket.Conn) void {
+pub fn removeWsConn(self: *Context, conn_to_remove: *websocket.Conn) void {
     self.mutex.lock();
     defer self.mutex.unlock();
 
-    for (self.connections.items, 0..) |conn, i| {
+    for (self.wsConnections.items, 0..) |conn, i| {
         if (conn == conn_to_remove) {
-            _ = self.connections.swapRemove(i);
+            _ = self.wsConnections.swapRemove(i);
             return;
         }
     }
 }
 
-pub fn writeToAll(self: *Context, conn_to_skip: *websocket.Conn, data: []const u8) !void {
+pub fn writeToAllWs(self: *Context, conn_to_skip: *websocket.Conn, data: []const u8) !void {
     self.mutex.lock();
     defer self.mutex.unlock();
-    for (self.connections.items) |conn| {
+    for (self.wsConnections.items) |conn| {
         if (conn == conn_to_skip) continue;
         try conn.writeBin(data);
     }
