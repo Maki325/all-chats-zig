@@ -12,6 +12,7 @@ alloc: std.mem.Allocator,
 client: std.http.Client,
 aggregator_client: websocket.Client,
 
+stream_id: []const u8,
 inner_tube_api_key: []const u8,
 inner_tube_ctx: std.json.Parsed(std.json.Value),
 channel_id: []const u8,
@@ -165,7 +166,8 @@ pub fn init(alloc: std.mem.Allocator, stream_id: []const u8) !YouTubeBot {
         .alloc = alloc,
         .inner_tube_api_key = inner_tube_api_key,
         .inner_tube_ctx = inner_tube_ctx,
-        .channel_id = channel_id, //
+        .stream_id = stream_id,
+        .channel_id = channel_id,
         .continuation_token = continuation_token,
         .client = client,
         .seen_msgs = SeenMsgsMap.init(alloc),
@@ -184,7 +186,7 @@ pub fn run(self: *YouTubeBot, running: *bool) !void {
     try self.aggregator_client.handshake("/ws", .{
         .timeout_ms = 5000,
     });
-    std.debug.print("Started YouTube bot!\n", .{});
+    std.debug.print("Started YouTube bot: \"{s}\"!\n", .{self.stream_id});
 
     var i: usize = 0;
     while (running.*) {
