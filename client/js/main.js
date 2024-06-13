@@ -5,8 +5,10 @@ import messages from "./messages/toClient/index.js";
 /** @type {HTMLDivElement} */
 const container = document.getElementById("container");
 
+const HOST = "127.0.0.1";
+
 window.onload = function init() {
-  const ws = new WebSocket("ws://172.0.0.1:9223");
+  const ws = new WebSocket(`ws://${HOST}:5882/ws`);
   ws.binaryType = "arraybuffer";
   ws.onopen = e => console.log('Websocket connection opened:', e);
   ws.onerror = (e) => console.log("Websocket error:", e);
