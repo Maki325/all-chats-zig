@@ -16,6 +16,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     }), &.{ protocol, httpz, dotenv });
     addSQLite(b, server);
+    addResources(b, server, target, optimize);
     b.installArtifact(server);
     addRunStep(b, server, "run-server", false);
 
@@ -88,4 +89,20 @@ pub fn addSQLite(b: *std.Build, exe: *std.Build.Step.Compile) void {
 
     // link the bundled sqlite3
     exe.linkLibrary(sqlite.artifact("sqlite"));
+}
+
+pub fn addResources(b: *std.Build, exe: *std.Build.Step.Compile, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) void {
+    const generate_embedded_resources = b.addExecutable(.{
+        .name = "generate_embedded_resources",
+        .root_source_file = .{ .path = "tools/generate_embedded_resources.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
+
+    const generate_embedded_resources_step = b.addRunArtifact(generate_embedded_resources);
+    const output = generate_embedded_resources_step.addOutputFileArg("resources.zig");
+    _ = generate_embedded_resources_step.addDepFileOutputArg("deps.d");
+    generate_embedded_resources_step.addDirectoryArg(b.path("./client/"));
+
+    exe.root_module.addAnonymousImport("resources", .{ .root_source_file = output });
 }

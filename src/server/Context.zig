@@ -5,11 +5,13 @@ const sqlite = @import("sqlite");
 const Context = @This();
 
 pub const Connections = std.ArrayList(*websocket.Conn);
+pub const StaticFile = struct { abs: []const u8, url: []const u8 };
 
 alloc: std.mem.Allocator,
 db: sqlite.Db,
 mutex: std.Thread.Mutex,
 wsConnections: Connections,
+static_file: ?StaticFile = null,
 
 pub fn addWsConn(self: *Context, conn: *websocket.Conn) !void {
     self.mutex.lock();

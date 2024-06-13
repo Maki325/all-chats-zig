@@ -18,7 +18,6 @@ pub fn init(conn: *websocket.Conn, context: *Context) !Handler {
 
 // optional hook that, if present, will be called after initialization is complete
 pub fn afterInit(h: *Handler) !void {
-    std.debug.print("afterInit!\n", .{});
     try h.conn.writePing(&[0]u8{});
 }
 
