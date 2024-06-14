@@ -19,6 +19,8 @@ pub fn handle(ctx: *Context, req: *httpz.Request, res: *httpz.Response) !void {
         \\  timestampType
         \\FROM
         \\  messages
+        \\ORDER BY
+        \\  id DESC
         \\LIMIT 100;
     ;
     var stmt = try ctx.db.prepare(query);

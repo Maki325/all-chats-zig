@@ -65,7 +65,7 @@ function _handleData(reader) {
       clone.querySelector(".msg-text").textContent = msg.getTrimmedMessage(100);
       clone.querySelector(".msg-timestamp").textContent = formatDate(msg.getDate());
 
-      container.appendChild(clone);
+      container.prepend(clone);
 
       window.scrollBy({top: -clone.clientHeight});
       break;
