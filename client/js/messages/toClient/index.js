@@ -37,5 +37,6 @@ class UnknownMessageId extends Error {
 
 export default {
   readMessage,
+  AddMessage,
   PLATFORM,
 }

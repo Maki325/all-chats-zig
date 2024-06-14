@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/htmx.org@1.9.12/dist/htmx.js" integrity="sha384-qbtR4rS9RrUMECUWDWM2+YGgN3U4V4ZncZ0BvUcg9FGct0jqXz3PUdVpU1p0yrXS" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+    <main>
+      <table>
+        <thead>
+          <tr>
+            <td>ID</td>
+            <td>Src</td>
+            <td>Username</td>
+            <!-- Trimmed, but show full on higlight or something? -->
+            <td>Message</td>
+            <td>TimeStamp</td>
+          </tr>
+        </thead>
+        <tbody id="messages">
+          {{MESSAGES}}
+        </tbody>
+      </table>
+    </main>
+
+    <template id="msg">
+      <tr>
+        <td class="msg-id">1</td>
+        <td class="msg-platform">
+          <div>
+            <img class="msg-platform-icon" src="./youtube.svg" />
+          </div>
+        </td>
+        <td><a class="msg-sender">Maki325</a></td>
+        <td class="msg-text">Some message</td>
+        <td class="msg-timestamp">2024.06.13 21:42:12</td>
+      </tr>
+    </template>
+
+    <script src="js/admin.js" type="module"></script>
+</body>
+</html>

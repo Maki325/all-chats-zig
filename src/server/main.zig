@@ -49,6 +49,7 @@ pub fn main() !void {
     defer route_contextes.deinit();
 
     router.get("/ws", routes.ws);
+    router.get("/admin", routes.admin);
 
     std.debug.print("Listening on port 5882!\n", .{});
     // start the server in the current thread, blocking.
