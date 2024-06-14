@@ -44,7 +44,7 @@ export default class AddMessage {
   }
 
   getDate() {
-    return timestampToDate(this.timestamp, this.timestampType);
+    return AddMessage.timestampToDate(this.timestamp, this.timestampType);
   }
 
   /**
