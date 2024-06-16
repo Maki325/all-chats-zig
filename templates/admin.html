@@ -20,7 +20,8 @@
             <td>Username</td>
             <!-- Trimmed, but show full on higlight or something? -->
             <td>Message</td>
-            <td>TimeStamp</td>
+            <td>Time Stamp</td>
+            <td>Action</td>
           </tr>
         </thead>
         <tbody id="messages">
@@ -39,7 +40,8 @@
         </td>
         <td><a class="msg-sender">Maki325</a></td>
         <td class="msg-text">Some message</td>
-        <td class="msg-timestamp">2024.06.13 21:42:12</td>
+        <td class="msg-timestamp" hx-preserve="true">2024.06.13 21:42:12</td>
+        <td class="msg-action" hx-swap="outerHTML">Hide</td>
       </tr>
     </template>
 

@@ -10,6 +10,8 @@ pub const Platform = enum(u8) {
 };
 
 pub const TimestampType = enum(u8) {
+    pub const BaseType = u8;
+
     Second,
     Milisecond,
     Microsecond,

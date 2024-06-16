@@ -33,6 +33,10 @@ main {
     font-variation-settings: "slnt" 0;
 }
 
+.msg[data-visible="false"] {
+    display: none;
+}
+
 .msg:hover {
     background-color: #222527;
 }

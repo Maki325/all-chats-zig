@@ -8,7 +8,6 @@ const container = document.getElementById("messages");
 const HOST = "127.0.0.1";
 
 window.onload = function init() {
-  fixTimestamps();
 
   const ws = new WebSocket(`ws://${HOST}:5882/ws`);
   ws.binaryType = "arraybuffer";
@@ -22,19 +21,6 @@ window.onload = function init() {
       }
     }
   });
-}
-
-// Zig doesn't provide a DateTime implementation
-// And because I can't be bothered to implement
-// It myself, I just send the Timestamp and
-// The timestamp type to the client, and
-// Fix it in JS lol
-function fixTimestamps() {
-  const cols = container.querySelectorAll(".msg-timestamp");
-  for(const col of cols) {
-    const [ts, tsType] = col.textContent.split(",");
-    col.textContent = formatDate(messages.AddMessage.timestampToDate(BigInt(ts), parseInt(tsType, 10)));
-  }
 }
 
 const handleData = wrapResult(_handleData);
@@ -54,6 +40,9 @@ function _handleData(reader) {
       /** @type {HTMLDivElement} */
       const clone = template.content.cloneNode(true);
 
+      const tr = clone.querySelector("tr");
+      tr.id = `msg-${msg.id}`;
+
       clone.querySelector(".msg-id").textContent = msg.id;
       clone.querySelector(".msg-platform-icon").src = PLATFORM_ICON[msg.platform] ?? 'Unknown';
 
@@ -64,8 +53,15 @@ function _handleData(reader) {
 
       clone.querySelector(".msg-text").textContent = msg.getTrimmedMessage(100);
       clone.querySelector(".msg-timestamp").textContent = formatDate(msg.getDate());
+      clone.querySelector(".msg-timestamp").id = `msg-timestamp-${msg.id}`;
+
+      const action = clone.querySelector(".msg-action");
+      action.setAttribute("hx-post", `/messages/${msg.id}/toggle`);
+      action.setAttribute("hx-target", `#msg-${msg.id}`);
 
       container.prepend(clone);
+
+      window.htmx.process(tr);
 
       window.scrollBy({top: -clone.clientHeight});
       break;

@@ -38,6 +38,8 @@ function _handleData(reader) {
       /** @type {HTMLDivElement} */
       const clone = template.content.cloneNode(true);
 
+      clone.querySelector(".msg").id = `msg-${message.msg.id}`;
+
       clone.querySelector(".msg-author").textContent = message.msg.getTrimmedAuthor();
       clone.querySelector(".msg-text").textContent = message.msg.getTrimmedMessage();
 
@@ -55,6 +57,16 @@ function _handleData(reader) {
       container.appendChild(clone);
 
       window.scrollTo(0, container.clientHeight)
+      break;
+    }
+    case 'toggle_message': {
+      const {id, visible} = message.msg;
+      /** @type {HTMLDivElement} */
+      const msg = container.querySelector(`#msg-${id}`);
+      if(!msg) break;
+
+      msg.dataset.visible = `${visible}`;
+
       break;
     }
   }

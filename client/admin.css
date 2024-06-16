@@ -48,6 +48,16 @@ tfoot td {
     font-weight: bold;
 }
 
+tr.deleted > :not(.msg-action) {
+    filter: blur(5px);
+    user-select: none;
+    pointer-events: none;
+}
+
+.msg-action, .msg-platform {
+    user-select: none;
+}
+
 .msg-platform > div {
     display: flex;
     justify-content: center;

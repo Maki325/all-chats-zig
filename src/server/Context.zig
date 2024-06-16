@@ -32,11 +32,11 @@ pub fn removeWsConn(self: *Context, conn_to_remove: *websocket.Conn) void {
     }
 }
 
-pub fn writeToAllWs(self: *Context, conn_to_skip: *websocket.Conn, data: []const u8) !void {
+pub fn writeToAllWs(self: *Context, conn_to_skip: ?*websocket.Conn, data: []const u8) !void {
     self.mutex.lock();
     defer self.mutex.unlock();
     for (self.wsConnections.items) |conn| {
-        if (conn == conn_to_skip) continue;
+        if (conn_to_skip != null and conn == conn_to_skip.?) continue;
         try conn.writeBin(data);
     }
 }

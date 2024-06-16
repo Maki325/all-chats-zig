@@ -50,6 +50,7 @@ pub fn main() !void {
 
     router.get("/ws", routes.ws);
     router.get("/admin", routes.admin);
+    router.post("/messages/:id/toggle", routes.messages.toggle);
 
     std.debug.print("Listening on port 5882!\n", .{});
     // start the server in the current thread, blocking.
@@ -178,7 +179,8 @@ fn initDb(db: *sqlite.Db) !void {
         \\  author TEXT NOT NULL,
         \\  message TEXT NOT NULL,
         \\  timestamp INTEGER NOT NULL,
-        \\  timestampType INTEGER NOT NULL
+        \\  timestampType INTEGER NOT NULL,
+        \\  visible INTEGER NOT NULL DEFAULT 1
         \\);
     ;
 
