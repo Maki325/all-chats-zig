@@ -18,6 +18,7 @@ pub fn main() !void {
 
     var general_purpose_allocator = std.heap.GeneralPurposeAllocator(.{}){};
     const alloc = general_purpose_allocator.allocator();
+    defer _ = general_purpose_allocator.deinit();
 
     try dotenv.load(alloc, .{});
 
@@ -29,7 +30,7 @@ pub fn main() !void {
 
     const envMap = try std.process.getEnvMap(alloc);
 
-    const commandCapReq = "CAP REQ :twitch.tv/tags twitch.tv/commands";
+    const commandCapReq = "CAP REQ :twitch.tv/tags twitch.tv/membership twitch.tv/commands";
     const commandNick = "NICK maki325";
 
     var space: [100]u8 = undefined;

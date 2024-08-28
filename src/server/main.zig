@@ -12,6 +12,7 @@ const dbg = builtin.mode == std.builtin.OptimizeMode.Debug;
 pub fn main() !void {
     var general_purpose_allocator = std.heap.GeneralPurposeAllocator(.{}){};
     const alloc = general_purpose_allocator.allocator();
+    defer _ = general_purpose_allocator.deinit();
 
     try dotenv.load(alloc, .{});
 
@@ -41,8 +42,6 @@ pub fn main() !void {
 
     var router = server.router();
 
-    // use get/post/put/head/patch/options/delete
-    // you can also use "all" to attach to all methods
     router.get("/api/user/:id", getUser);
 
     const route_contextes = try routeStaticFiles(alloc, router);
@@ -53,7 +52,6 @@ pub fn main() !void {
     router.post("/messages/:id/toggle", routes.messages.toggle);
 
     std.debug.print("Listening on port 5882!\n", .{});
-    // start the server in the current thread, blocking.
     try server.listen();
 }
 

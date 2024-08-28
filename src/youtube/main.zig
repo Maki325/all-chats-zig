@@ -4,6 +4,7 @@ const YouTubeBot = @import("./YouTubeBot.zig");
 pub fn main() !void {
     var general_purpose_allocator = std.heap.GeneralPurposeAllocator(.{}){};
     const alloc = general_purpose_allocator.allocator();
+    defer _ = general_purpose_allocator.deinit();
 
     const args = try std.process.argsAlloc(alloc);
     defer std.process.argsFree(alloc, args);
