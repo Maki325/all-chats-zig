@@ -4,6 +4,7 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    const common = NamedModule.fromFile(b, "common", "./src/common/lib.zig");
     const protocol = NamedModule.fromFile(b, "protocol", "./src/protocol/lib.zig");
     const dotenv = NamedModule.fromFile(b, "dotenv", "./deps/dotenv/lib.zig");
     const websocket = NamedModule.fromZon(b, "websocket");
@@ -18,16 +19,16 @@ pub fn build(b: *std.Build) void {
     addSQLite(b, server);
     addResources(b, server, target, optimize);
     b.installArtifact(server);
-    addRunStep(b, server, "run-server", false);
+    addRunStep(b, server, "run-server", true);
 
     const bot_twitch = addModules(b.addExecutable(.{
         .name = "bot-twitch",
         .root_source_file = b.path("src/twitch/main.zig"),
         .target = target,
         .optimize = optimize,
-    }), &.{ protocol, websocket, dotenv });
+    }), &.{ common, protocol, websocket, dotenv });
     b.installArtifact(bot_twitch);
-    addRunStep(b, bot_twitch, "run-twitch", false);
+    addRunStep(b, bot_twitch, "run-twitch", true);
 
     const bot_youtube = addModules(b.addExecutable(.{
         .name = "bot-youtube",

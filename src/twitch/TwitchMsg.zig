@@ -25,7 +25,7 @@ pub fn init(alloc: std.mem.Allocator, msgPtr: *const []const u8) !TwitchMsg {
 
     if (msg[0] == '@') {
         tags = msgParts.next() orelse {
-            std.debug.print("No `tags` in message: \"{s}\"", .{msg});
+            std.log.warn("No `tags` in message: \"{s}\"", .{msg});
             return error.NoTags;
         };
         try parseTags(&tag_map, tags.?[1..]);
@@ -36,7 +36,7 @@ pub fn init(alloc: std.mem.Allocator, msgPtr: *const []const u8) !TwitchMsg {
 
     if (msg[msgParts.index orelse 0] == ':') {
         sourceRaw = msgParts.next() orelse {
-            std.debug.print("No `source` in message: \"{s}\"", .{msg});
+            std.log.warn("No `source` in message: \"{s}\"", .{msg});
             return error.NoSource;
         };
         if (sourceRaw) |raw| {
@@ -53,7 +53,7 @@ pub fn init(alloc: std.mem.Allocator, msgPtr: *const []const u8) !TwitchMsg {
     }
 
     const cmdRaw = msgParts.next() orelse {
-        std.debug.print("No `command` in message: \"{s}\"", .{msg});
+        std.log.warn("No `command` in message: \"{s}\"", .{msg});
         return error.NoCmd;
     };
 
@@ -93,7 +93,7 @@ pub fn init(alloc: std.mem.Allocator, msgPtr: *const []const u8) !TwitchMsg {
 }
 
 pub fn print(self: *const TwitchMsg) void {
-    std.debug.print("TwitchMsg: {{\n  tags = \"{?s}\",\n  source = \"{?any}\",\n  cmd = {s},\n  args = \"{s}\"\n}}\n", .{
+    std.log.debug("TwitchMsg: {{\n  tags = \"{?s}\",\n  source = \"{?any}\",\n  cmd = {s},\n  args = \"{s}\"\n}}\n", .{
         self.tags,
         self.source,
         @tagName(self.cmd),
@@ -102,7 +102,7 @@ pub fn print(self: *const TwitchMsg) void {
 }
 
 pub fn printRaw(self: *const TwitchMsg) void {
-    std.debug.print("TwitchMsg: {{\n  tags = \"{?s}\",\n  source = \"{?s}\",\n  cmdRaw = \"{s}\",\n  args = \"{s}\"\n}}\n", .{
+    std.log.debug("TwitchMsg: {{\n  tags = \"{?s}\",\n  source = \"{?s}\",\n  cmdRaw = \"{s}\",\n  args = \"{s}\"\n}}\n", .{
         self.tags,
         self.sourceRaw,
         self.cmdRaw,

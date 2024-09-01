@@ -51,7 +51,7 @@ pub fn main() !void {
     router.get("/admin", routes.admin);
     router.post("/messages/:id/toggle", routes.messages.toggle);
 
-    std.debug.print("Listening on port 5882!\n", .{});
+    std.log.info("Listening on port 5882!\n", .{});
     try server.listen();
 }
 

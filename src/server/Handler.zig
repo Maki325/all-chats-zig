@@ -23,21 +23,21 @@ pub fn afterInit(h: *Handler) !void {
 
 pub fn handle(handler: *Handler, message: websocket.Message) !void {
     handleImpl(handler, message) catch |e| {
-        std.log.err("Got error ({any}) handling message: {any}\n", .{ e, message });
+        std.log.err("Got error ({any}) handling message: {any}", .{ e, message });
     };
 }
 
 fn handleImpl(self: *Handler, message: websocket.Message) !void {
-    std.debug.print("Got msg: {any}\n", .{message});
+    std.log.debug("Got msg: {any}\n", .{message});
     var reader = protocol.Reader.init(message.data);
 
     const message_id = try reader.readInt(u8);
 
-    std.debug.print("message_id: {d}\n", .{message_id});
+    std.log.debug("message_id: {d}\n", .{message_id});
 
     const msg = try protocol.messages.ToServer.Message.deserialize(message_id, &reader);
 
-    std.debug.print("Got msg: {any}\n", .{msg});
+    std.log.debug("Got msg: {any}\n", .{msg});
 
     switch (msg) {
         .AddMessage => |add_msg| {
@@ -103,5 +103,5 @@ fn handleImpl(self: *Handler, message: websocket.Message) !void {
 // called whenever the connection is closed, can do some cleanup in here
 pub fn close(self: *Handler) void {
     self.context.removeWsConn(self.conn);
-    std.debug.print("Closed: {any}\n", .{self});
+    std.log.debug("Closed: {any}\n", .{self});
 }

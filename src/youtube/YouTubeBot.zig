@@ -186,7 +186,7 @@ pub fn run(self: *YouTubeBot, running: *bool) !void {
     try self.aggregator_client.handshake("/ws", .{
         .timeout_ms = 5000,
     });
-    std.debug.print("Started YouTube bot: \"{s}\"!\n", .{self.stream_id});
+    std.log.info("Started YouTube bot: \"{s}\"!\n", .{self.stream_id});
 
     var i: usize = 0;
     while (running.*) {
@@ -298,7 +298,7 @@ fn fetchActions(self: *YouTubeBot) !void {
                     try msg_text.appendSlice(text);
                 }
 
-                std.debug.print("{s}: {s}\n", .{ author, msg_text.items });
+                std.log.debug("{s}: {s}\n", .{ author, msg_text.items });
 
                 var writer = protocol.Writer.init(self.alloc);
                 defer writer.deinit();

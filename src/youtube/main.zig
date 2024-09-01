@@ -10,7 +10,7 @@ pub fn main() !void {
     defer std.process.argsFree(alloc, args);
 
     if (args.len != 2) {
-        std.log.err("Usage: {s} <stream id>\n", .{args[0]});
+        std.log.err("Usage: {s} <stream id>", .{args[0]});
         return;
     }
 

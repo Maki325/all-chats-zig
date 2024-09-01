@@ -4,14 +4,17 @@ const builtin = @import("builtin");
 const protocol = @import("protocol");
 const TwitchBot = @import("./TwitchBot.zig");
 const TwitchMsg = @import("./TwitchMsg.zig");
+const Args = @import("args.zig");
+const common = @import("common");
 
-var g_bot: TwitchBot = undefined;
 var rand: std.Random = undefined;
 
-pub fn main() !void {
+pub fn main() void {
     var prng = std.rand.DefaultPrng.init(blk: {
         var seed: u64 = undefined;
-        try std.posix.getrandom(std.mem.asBytes(&seed));
+        std.posix.getrandom(std.mem.asBytes(&seed)) catch |e| {
+            std.log.warn("Couldn't get a random seed! {!}", .{e});
+        };
         break :blk seed;
     });
     rand = prng.random();
@@ -20,33 +23,107 @@ pub fn main() !void {
     const alloc = general_purpose_allocator.allocator();
     defer _ = general_purpose_allocator.deinit();
 
-    try dotenv.load(alloc, .{});
+    // const A = struct {
+    //     b: []const u8,
+    // };
+    // try common.args.parse(A);
+    // try common.args.parse(.{
+    //     .{ "someNumber", i32 },
+    // });
 
-    g_bot = try TwitchBot.init(alloc, handleTwitchMsg);
-    defer g_bot.deinit();
+    common.args.parse(.{
+        .{ .a = 5 },
+        .{ .a = 5 },
+    }) catch |e| {
+        // idk
+        std.log.err("Args parse error! {!}", .{e});
+    };
+    std.process.exit(1);
 
-    try g_bot.handshakeTwitch();
-    try g_bot.handshakeAggregator();
+    dotenv.load(alloc, .{}) catch |e| {
+        std.log.err("Couldn't load .env file! {!}", .{e});
+        std.process.exit(1);
+    };
 
-    const envMap = try std.process.getEnvMap(alloc);
+    var env_map = std.process.getEnvMap(alloc) catch |e| {
+        std.log.err("Couldn't get the env map! {!}", .{e});
+        std.process.exit(1);
+    };
+    defer env_map.deinit();
 
-    const commandCapReq = "CAP REQ :twitch.tv/tags twitch.tv/membership twitch.tv/commands";
-    const commandNick = "NICK maki325";
+    var args = Args.parse(alloc) catch |e| {
+        std.log.err("Couldn't parse args! {!}", .{e});
+    };
+    defer args.deinit();
+
+    var bot = switch (TwitchBot.init(alloc, args, handleTwitchMsg)) {
+        .Ok => |bot| bot,
+        .Twitch => |err| {
+            std.log.err("Couldn't connect to Twitch irc chat! {!}", .{err});
+            std.process.exit(1);
+        },
+        .Aggregator => |err| {
+            std.log.err("Couldn't connect to the aggregator client! {!}", .{err});
+            std.process.exit(1);
+        },
+    };
+    defer bot.deinit();
+
+    bot.handshakeTwitch() catch |e| {
+        std.log.err("Couldn't handshake with twitch! {!}", .{e});
+        std.process.exit(1);
+    };
+    bot.handshakeAggregator() catch |e| {
+        std.log.err("Couldn't handshake with the aggregator! {!}", .{e});
+        std.process.exit(1);
+    };
 
     var space: [100]u8 = undefined;
-    const commandPass = try std.fmt.bufPrint(&space, "PASS oauth:{?s}", .{std.process.EnvMap.get(envMap, "TOKEN")});
 
-    try g_bot.write(try alloc.dupe(u8, commandCapReq));
-    try g_bot.write(try alloc.dupe(u8, commandPass));
-    try g_bot.write(try alloc.dupe(u8, commandNick));
-    try g_bot.write(try alloc.dupe(u8, "JOIN #maki325"));
+    bot.write(std.fmt.bufPrint(&space, "CAP REQ :twitch.tv/tags twitch.tv/membership twitch.tv/commands", .{}) catch unreachable) catch |e| {
+        std.log.err("Couldn't send the CAP REQ message! {!}", .{e});
+        std.process.exit(1);
+    };
+    bot.write(std.fmt.bufPrint(&space, "PASS oauth:{s}", .{
+        std.process.EnvMap.get(env_map, "TOKEN") orelse @panic("Please provide TOKEN in the environment variables"),
+    }) catch unreachable) catch |e| {
+        std.log.err("Couldn't send the PASS message! {!}", .{e});
+        std.process.exit(1);
+    };
+    bot.write(std.fmt.bufPrint(&space, "NICK {s}", .{args.nick}) catch unreachable) catch |e| {
+        std.log.err("Couldn't send the NICK message! {!}", .{e});
+        std.process.exit(1);
+    };
+    bot.write(std.fmt.bufPrint(&space, "JOIN #{s}", .{args.channel}) catch unreachable) catch |e| {
+        std.log.err("Couldn't send the JOIN message! {!}", .{e});
+        std.process.exit(1);
+    };
 
-    try setAbortSignalHandler(onAbort);
+    const Aborter = struct {
+        var twitch_bot: *TwitchBot = undefined;
 
-    try g_bot.client.readLoop(&g_bot);
+        fn abort() void {
+            twitch_bot.shutdown();
+            std.log.info("\n", .{});
+        }
+    };
+    Aborter.twitch_bot = &bot;
+
+    setAbortSignalHandler(Aborter.abort) catch |e| {
+        std.log.err("Couldn't set the abortion signal handler! {!}", .{e});
+        std.process.exit(1);
+    };
+
+    bot.client.readLoop(&bot) catch |e| {
+        std.log.err("There was an error during the read loop! {!}", .{e});
+        std.process.exit(1);
+    };
+
+    std.log.info("Twitch bot has shutdown gracefully.", .{});
 }
 
-fn handleTwitchMsg(bot: *TwitchBot, msg: *TwitchMsg) TwitchBot.HandleTwitchMsgFnError!void {
+fn handleTwitchMsg(_bot: *anyopaque, msg: *TwitchMsg) TwitchBot.HandleTwitchMsgFnError!void {
+    const bot: *TwitchBot = @ptrCast(@alignCast(_bot));
     msg.print();
 
     switch (msg.cmd) {
@@ -121,13 +198,8 @@ fn handleTwitchMsg(bot: *TwitchBot, msg: *TwitchMsg) TwitchBot.HandleTwitchMsgFn
     }
 }
 
-fn onAbort() void {
-    std.debug.print("ABORTING THE SHIP!\n", .{});
-    g_bot.client.close();
-}
-
-// From here: https://github.com/r00ster91/wool/blob/786b45fff5f0a5c9106a907b5036a2041906fdb7/examples/backends/terminal/src/main.zig#L234
-// TODO: PR this if https://github.com/ziglang/zig/issues/13045 is accepted
+/// From here: https://github.com/r00ster91/wool/blob/786b45fff5f0a5c9106a907b5036a2041906fdb7/examples/backends/terminal/src/main.zig#L234
+/// TODO: PR this if https://github.com/ziglang/zig/issues/13045 is accepted
 /// Registers a handler to be run if an abort signal is catched.
 /// The abort signal is usually fired if Ctrl+C is pressed in a terminal.
 ///
