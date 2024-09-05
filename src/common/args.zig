@@ -85,56 +85,343 @@ fn dump(args_info: std.builtin.Type) void {
 
 pub const Arg = struct {
     field_name: []const u8,
+    field_type: type,
     flag: []const u8,
 };
 
-pub fn parse(comptime args: anytype) !void {
-    switch (@typeInfo(@TypeOf(args))) {
-        .Array => {},
-        else => {
-            dump(@typeInfo(@TypeOf(args)));
-            return error.ExpectedArray;
+const ArgData = struct {
+    field_name: []const u8,
+};
+
+pub fn innerArgs(
+    comptime in_args: anytype,
+    comptime NullableStruct: type,
+    comptime create_null_data: fn () NullableStruct,
+    comptime ArgsStruct: type,
+    comptime map: std.StaticStringMap(ArgData),
+    comptime set: fn (*NullableStruct, []const u8, value: anytype) void,
+    comptime fields: []const std.builtin.Type.StructField,
+) type {
+    return struct {
+        // const Self = @This();
+        pub fn parse(default_program_name: []const u8, alloc: std.mem.Allocator) !ArgsStruct {
+            var arg_iterator = try std.process.argsWithAllocator(alloc);
+            const program_name = arg_iterator.next() orelse default_program_name;
+            _ = program_name;
+
+            var args_to_fill = create_null_data();
+
+            while (arg_iterator.next()) |arg| {
+                const arg_data = map.get(arg) orelse {
+                    std.debug.print("Unknown argument: {s}\n", .{arg});
+                    // help(program_name);
+                    std.process.exit(2);
+                };
+
+                set(&args_to_fill, arg_data.field_name, arg_iterator.next() orelse {
+                    std.debug.print("{s} provided with no value!\n", .{arg});
+                    // help(program_name);
+                    std.process.exit(2);
+                });
+
+                // @field(args_to_fill, arg_data.field_name) = arg_iterator.next() orelse {
+                //     std.debug.print("{s} provided with no value!\n", .{arg});
+                //     // help(program_name);
+                //     std.process.exit(2);
+                // };
+                // _ = args_to_fill;
+                // _ = data;
+            }
+
+            var final_args: ArgsStruct = undefined;
+            inline for (fields) |f| {
+                const arg = @field(in_args, f.name);
+                const field_name = @field(arg, "field_name");
+
+                const field_type = @field(arg, "field_type");
+                switch (@typeInfo(field_type)) {
+                    .Optional => {
+                        @field(final_args, field_name) = @field(args_to_fill, field_name);
+                    },
+                    else => {
+                        @field(final_args, field_name) = @field(args_to_fill, field_name) orelse {
+                            return error.FieldNotFilled;
+                        };
+                    },
+                }
+            }
+
+            std.debug.print("Args: {any}\n", .{args_to_fill});
+
+            return final_args;
+        }
+    };
+}
+
+pub fn Args(comptime in_args: anytype) type {
+    const fields = switch (@typeInfo(@TypeOf(in_args))) {
+        .Struct => |s| blk: {
+            if (!s.is_tuple) {
+                return error.ExpectedTuple;
+            }
+            break :blk s.fields;
         },
-    }
-    switch (@typeInfo(@typeInfo(@TypeOf(args)).Array.child)) {
-        .Struct => {},
         else => {
-            return error.ExpectedStruct;
+            dump(@typeInfo(@TypeOf(in_args)));
+            return error.ExpectedTuple;
         },
+    };
+
+    const NullableStruct, const create_null_data, const ArgsStruct, const map: std.StaticStringMap(ArgData), const set = comptime blk: {
+        _ = std.builtin.Type;
+        var args_fields: [fields.len]std.builtin.Type.StructField = undefined;
+        var args_nullable_fields: [fields.len]std.builtin.Type.StructField = undefined;
+        // var flag_kvs: [fields.len]std.meta.Tuple(&[_]type{ []const u8, *const anyopaque }) = undefined;
+        var flag_kvs: [fields.len]std.meta.Tuple(&[_]type{ []const u8, ArgData }) = undefined;
+
+        for (fields, 0..) |f, i| {
+            const arg = @field(in_args, f.name);
+            if (!@hasField(@TypeOf(arg), "field_name")) {
+                @panic("No field_name!");
+                // return error.NoFieldName;
+            }
+            if (!@hasField(@TypeOf(arg), "field_type")) {
+                @panic("No field_type!");
+                // return error.NoFieldType;
+            }
+            if (!@hasField(@TypeOf(arg), "flag")) {
+                @panic("No flag!");
+                // return error.NoFieldType;
+            }
+            flag_kvs[i][0] = @field(arg, "flag");
+            const field_name = @field(arg, "field_name");
+            const field_type = @field(arg, "field_type");
+            flag_kvs[i][1] = ArgData{
+                .field_name = field_name,
+            };
+            args_nullable_fields[i] = .{
+                .name = field_name,
+                // .type = @field(arg, "field_type"),
+                .type = @Type(.{ .Optional = .{ .child = field_type } }),
+                .default_value = null,
+                .is_comptime = false,
+                .alignment = 0,
+            };
+            args_fields[i] = .{
+                .name = field_name,
+                .type = field_type,
+                .default_value = null,
+                .is_comptime = false,
+                .alignment = 0,
+            };
+        }
+
+        // std.debug.print("{any}\n", .{flag_kvs});
+        // std.debug.print("{s}\n", .{flag_kvs[0][0]});
+
+        const map = std.StaticStringMap(ArgData).initComptime(flag_kvs);
+        // std.debug.print("{any}\n", .{map.keys()});
+
+        // std.builtin.Type.Struct
+        const NullableStruct = @Type(.{
+            .Struct = .{
+                .layout = .auto,
+                .is_tuple = false,
+                .fields = &args_nullable_fields,
+                .decls = &.{},
+            },
+        });
+
+        const GeneratedStruct = @Type(.{
+            .Struct = .{
+                .layout = .auto,
+                .is_tuple = false,
+                .fields = &args_fields,
+                .decls = &.{},
+            },
+        });
+
+        const set = struct {
+            fn set(self: *NullableStruct, field_name: []const u8, value: anytype) void {
+                inline for (std.meta.fields(NullableStruct)) |f| {
+                    if (std.mem.eql(u8, f.name, field_name)) {
+                        @field(self, f.name) = value;
+                        return;
+                    }
+                }
+            }
+        }.set;
+
+        const create_null_data = struct {
+            fn create_null_data() NullableStruct {
+                var nullable_data_to_fill: NullableStruct = undefined;
+                inline for (args_nullable_fields) |f| {
+                    @field(nullable_data_to_fill, f.name) = null;
+                }
+
+                return nullable_data_to_fill;
+            }
+        }.create_null_data;
+
+        break :blk .{ NullableStruct, create_null_data, GeneratedStruct, map, set };
+    };
+
+    return innerArgs(in_args, NullableStruct, create_null_data, ArgsStruct, map, set, fields);
+}
+
+pub fn parse(comptime in_args: anytype, default_program_name: []const u8, alloc: std.mem.Allocator) !void {
+    const fields = switch (@typeInfo(@TypeOf(in_args))) {
+        .Struct => |s| blk: {
+            if (!s.is_tuple) {
+                return error.ExpectedTuple;
+            }
+            break :blk s.fields;
+        },
+        else => {
+            dump(@typeInfo(@TypeOf(in_args)));
+            return error.ExpectedTuple;
+        },
+    };
+
+    const ArgData2 = struct {
+        field_name: []const u8,
+    };
+
+    var args_to_fill, const ArgsType, const map: std.StaticStringMap(ArgData2), const set = comptime blk: {
+        _ = std.builtin.Type;
+        var args_fields: [fields.len]std.builtin.Type.StructField = undefined;
+        var args_nullable_fields: [fields.len]std.builtin.Type.StructField = undefined;
+        // var flag_kvs: [fields.len]std.meta.Tuple(&[_]type{ []const u8, *const anyopaque }) = undefined;
+        var flag_kvs: [fields.len]std.meta.Tuple(&[_]type{ []const u8, ArgData2 }) = undefined;
+
+        for (fields, 0..) |f, i| {
+            const arg = @field(in_args, f.name);
+            if (!@hasField(@TypeOf(arg), "field_name")) {
+                @panic("No field_name!");
+                // return error.NoFieldName;
+            }
+            if (!@hasField(@TypeOf(arg), "field_type")) {
+                @panic("No field_type!");
+                // return error.NoFieldType;
+            }
+            if (!@hasField(@TypeOf(arg), "flag")) {
+                @panic("No flag!");
+                // return error.NoFieldType;
+            }
+            flag_kvs[i][0] = @field(arg, "flag");
+            const field_name = @field(arg, "field_name");
+            const field_type = @field(arg, "field_type");
+            flag_kvs[i][1] = ArgData2{
+                .field_name = field_name,
+            };
+            args_nullable_fields[i] = .{
+                .name = field_name,
+                // .type = @field(arg, "field_type"),
+                .type = @Type(.{ .Optional = .{ .child = field_type } }),
+                .default_value = null,
+                .is_comptime = false,
+                .alignment = 0,
+            };
+            args_fields[i] = .{
+                .name = field_name,
+                .type = field_type,
+                .default_value = null,
+                .is_comptime = false,
+                .alignment = 0,
+            };
+        }
+
+        // std.debug.print("{any}\n", .{flag_kvs});
+        // std.debug.print("{s}\n", .{flag_kvs[0][0]});
+
+        const map = std.StaticStringMap(ArgData2).initComptime(flag_kvs);
+        // std.debug.print("{any}\n", .{map.keys()});
+
+        // std.builtin.Type.Struct
+        const NullableStruct = @Type(.{
+            .Struct = .{
+                .layout = .auto,
+                .is_tuple = false,
+                .fields = &args_nullable_fields,
+                .decls = &.{},
+            },
+        });
+
+        const GeneratedStruct = @Type(.{
+            .Struct = .{
+                .layout = .auto,
+                .is_tuple = false,
+                .fields = &args_fields,
+                .decls = &.{},
+            },
+        });
+
+        const set = struct {
+            fn set(self: *NullableStruct, field_name: []const u8, value: anytype) void {
+                inline for (std.meta.fields(NullableStruct)) |f| {
+                    if (std.mem.eql(u8, f.name, field_name)) {
+                        @field(self, f.name) = value;
+                        return;
+                    }
+                }
+            }
+        }.set;
+
+        var nullable_data_to_fill: NullableStruct = undefined;
+        for (args_nullable_fields) |f| {
+            @field(nullable_data_to_fill, f.name) = null;
+        }
+
+        break :blk .{ nullable_data_to_fill, GeneratedStruct, map, set };
+    };
+
+    var arg_iterator = try std.process.argsWithAllocator(alloc);
+    const program_name = arg_iterator.next() orelse default_program_name;
+    _ = program_name;
+
+    while (arg_iterator.next()) |arg| {
+        const arg_data = map.get(arg) orelse {
+            std.debug.print("Unknown argument: {s}\n", .{arg});
+            // help(program_name);
+            std.process.exit(2);
+        };
+
+        set(&args_to_fill, arg_data.field_name, arg_iterator.next() orelse {
+            std.debug.print("{s} provided with no value!\n", .{arg});
+            // help(program_name);
+            std.process.exit(2);
+        });
+
+        // @field(args_to_fill, arg_data.field_name) = arg_iterator.next() orelse {
+        //     std.debug.print("{s} provided with no value!\n", .{arg});
+        //     // help(program_name);
+        //     std.process.exit(2);
+        // };
+        // _ = args_to_fill;
+        // _ = data;
     }
-    std.debug.print("Ok\n", .{});
-    // const args_info = @typeInfo(ArgsType).Struct;
 
-    // const generated_struct = comptime blk: {
-    //     _ = std.builtin.Type;
-    //     var fields: [args_info.fields.len]std.builtin.Type.Array StructField = undefined;
+    var final_args: ArgsType = undefined;
+    inline for (fields) |f| {
+        const arg = @field(in_args, f.name);
+        const field_name = @field(arg, "field_name");
 
-    //     for (args_info.fields, 0..) |f, i| {
-    //         fields[i] = .{
-    //             .name = f.name,
-    //             .type = @Type(.{ .Optional = .{ .child = f.type } }),
-    //             .default_value = f.default_value,
-    //             .is_comptime = f.is_comptime,
-    //             .alignment = f.alignment,
-    //         };
-    //     }
+        const field_type = @field(arg, "field_type");
+        switch (@typeInfo(field_type)) {
+            .Optional => {
+                @field(final_args, field_name) = @field(args_to_fill, field_name);
+            },
+            else => {
+                @field(final_args, field_name) = @field(args_to_fill, field_name) orelse {
+                    return error.FieldNotFilled;
+                };
+            },
+        }
+    }
 
-    //     var data: @Type(.{
-    //         .Struct = .{
-    //             .layout = .auto,
-    //             .is_tuple = false,
-    //             .fields = &fields,
-    //             .decls = &.{},
-    //         },
-    //     }) = undefined;
+    std.debug.print("Args: {any}\n", .{args_to_fill});
 
-    //     for (args_info.fields) |f| {
-    //         @field(data, f.name) = null;
-    //     }
-
-    //     break :blk data;
-    // };
-    // std.debug.print("What? {any}\n", .{generated_struct});
+    return final_args;
 }
 
 pub fn parse2(comptime ArgsType: type) !void {

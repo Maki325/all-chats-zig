@@ -31,14 +31,25 @@ pub fn main() void {
     //     .{ "someNumber", i32 },
     // });
 
-    common.args.parse(.{
-        .{ .a = 5 },
-        .{ .a = 5 },
-    }) catch |e| {
+    const NewArgs = common.args.Args(.{
+        .{ .field_name = "hello", .field_type = []const u8, .flag = "--hello" },
+    });
+    std.debug.print("NewArgs: {any}\n", .{NewArgs});
+    const aargs = NewArgs.parse("bot-twitch", alloc) catch |e| {
         // idk
         std.log.err("Args parse error! {!}", .{e});
+        std.process.exit(69);
     };
+    std.debug.print("args: {any}\n", .{aargs});
     std.process.exit(1);
+
+    // common.args.parse(.{
+    //     .{ .field_name = "hello", .field_type = []const u8, .flag = "--hello" },
+    // }, "bot-twitch", alloc) catch |e| {
+    //     // idk
+    //     std.log.err("Args parse error! {!}", .{e});
+    // };
+    // std.process.exit(1);
 
     dotenv.load(alloc, .{}) catch |e| {
         std.log.err("Couldn't load .env file! {!}", .{e});
