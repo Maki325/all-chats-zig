@@ -47,7 +47,7 @@ const NamedModule = struct {
     fn fromFile(b: *std.Build, name: []const u8, path: []const u8) NamedModule {
         return .{
             .name = name,
-            .module = b.addModule(name, .{ .root_source_file = .{ .path = path } }),
+            .module = b.addModule(name, .{ .root_source_file = b.path(path) }),
         };
     }
 
@@ -95,7 +95,7 @@ pub fn addSQLite(b: *std.Build, exe: *std.Build.Step.Compile) void {
 pub fn addResources(b: *std.Build, exe: *std.Build.Step.Compile, target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) void {
     const generate_embedded_resources = b.addExecutable(.{
         .name = "generate_embedded_resources",
-        .root_source_file = .{ .path = "tools/generate_embedded_resources.zig" },
+        .root_source_file = b.path("tools/generate_embedded_resources.zig"),
         .target = target,
         .optimize = optimize,
     });
