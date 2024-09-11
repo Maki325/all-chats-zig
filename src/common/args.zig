@@ -99,7 +99,7 @@ pub fn innerArgs(
     comptime create_null_data: fn () NullableStruct,
     comptime ArgsStruct: type,
     comptime map: std.StaticStringMap(ArgData),
-    comptime set: fn (*NullableStruct, []const u8, value: anytype) void,
+    comptime set: fn (*NullableStruct, []const u8, value: anytype) error{InvalidInput}!void,
     comptime fields: []const std.builtin.Type.StructField,
 ) type {
     return struct {
@@ -118,7 +118,7 @@ pub fn innerArgs(
                     std.process.exit(2);
                 };
 
-                set(&args_to_fill, arg_data.field_name, arg_iterator.next() orelse {
+                try set(&args_to_fill, arg_data.field_name, arg_iterator.next() orelse {
                     std.debug.print("{s} provided with no value!\n", .{arg});
                     // help(program_name);
                     std.process.exit(2);
@@ -145,6 +145,7 @@ pub fn innerArgs(
                     },
                     else => {
                         @field(final_args, field_name) = @field(args_to_fill, field_name) orelse {
+                            std.debug.print("Field not filled! {s}\n", .{field_name});
                             return error.FieldNotFilled;
                         };
                     },
@@ -242,10 +243,15 @@ pub fn Args(comptime in_args: anytype) type {
         });
 
         const set = struct {
-            fn set(self: *NullableStruct, field_name: []const u8, value: anytype) void {
-                inline for (std.meta.fields(NullableStruct)) |f| {
+            fn set(self: *NullableStruct, field_name: []const u8, value: anytype) error{InvalidInput}!void {
+                inline for (std.meta.fields(NullableStruct), 0..) |f, i| {
                     if (std.mem.eql(u8, f.name, field_name)) {
-                        @field(self, f.name) = value;
+                        const arg = @field(in_args, fields[i].name);
+                        if (@hasField(@TypeOf(arg), "parse")) {
+                            @field(self, f.name) = try @field(arg, "parse")(value);
+                        } else {
+                            @field(self, f.name) = value;
+                        }
                         return;
                     }
                 }

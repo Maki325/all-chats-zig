@@ -4,7 +4,6 @@ const builtin = @import("builtin");
 const protocol = @import("protocol");
 const TwitchBot = @import("./TwitchBot.zig");
 const TwitchMsg = @import("./TwitchMsg.zig");
-const Args = @import("args.zig");
 const common = @import("common");
 
 var rand: std.Random = undefined;
@@ -23,34 +22,6 @@ pub fn main() void {
     const alloc = general_purpose_allocator.allocator();
     defer _ = general_purpose_allocator.deinit();
 
-    // const A = struct {
-    //     b: []const u8,
-    // };
-    // try common.args.parse(A);
-    // try common.args.parse(.{
-    //     .{ "someNumber", i32 },
-    // });
-
-    const NewArgs = common.args.Args(.{
-        .{ .field_name = "hello", .field_type = []const u8, .flag = "--hello" },
-    });
-    std.debug.print("NewArgs: {any}\n", .{NewArgs});
-    const aargs = NewArgs.parse("bot-twitch", alloc) catch |e| {
-        // idk
-        std.log.err("Args parse error! {!}", .{e});
-        std.process.exit(69);
-    };
-    std.debug.print("args: {any}\n", .{aargs});
-    std.process.exit(1);
-
-    // common.args.parse(.{
-    //     .{ .field_name = "hello", .field_type = []const u8, .flag = "--hello" },
-    // }, "bot-twitch", alloc) catch |e| {
-    //     // idk
-    //     std.log.err("Args parse error! {!}", .{e});
-    // };
-    // std.process.exit(1);
-
     dotenv.load(alloc, .{}) catch |e| {
         std.log.err("Couldn't load .env file! {!}", .{e});
         std.process.exit(1);
@@ -62,10 +33,55 @@ pub fn main() void {
     };
     defer env_map.deinit();
 
-    var args = Args.parse(alloc) catch |e| {
+    if (false) {
+        const Args = common.args.Args(.{
+            // .{ .field_name = "help", .field_type = []const u8, .flag = "--help" },
+            .{ .field_name = "host", .field_type = []const u8, .flag = "--host" },
+            .{
+                .field_name = "port",
+                .field_type = u16,
+                .parse = struct {
+                    fn parse(input: []const u8) error{InvalidInput}!u16 {
+                        return std.fmt.parseInt(u16, input, 10) catch {
+                            return error.InvalidInput;
+                        };
+                    }
+                }.parse,
+                .flag = "--port",
+            },
+            .{ .field_name = "nick", .field_type = []const u8, .flag = "--nick" },
+            .{ .field_name = "channel", .field_type = []const u8, .flag = "--channel" },
+        });
+        const args = Args.parse("bot-twitch", alloc) catch |e| {
+            std.log.err("Couldn't parse args! {!}", .{e});
+            std.process.exit(1);
+        };
+        // defer args.deinit();
+
+        _ = args;
+    }
+
+    const args = common.args2.parse(.{
+        // .{ .field_name = "help", .field_type = []const u8, .flag = "--help" },
+        .{ .field_name = "host", .field_type = []const u8, .flag = "--host" },
+        .{
+            .field_name = "port",
+            .field_type = u16,
+            .parse = struct {
+                fn parse(input: []const u8) error{InvalidInput}!u16 {
+                    return std.fmt.parseInt(u16, input, 10) catch {
+                        return error.InvalidInput;
+                    };
+                }
+            }.parse,
+            .flag = "--port",
+        },
+        .{ .field_name = "nick", .field_type = []const u8, .flag = "--nick" },
+        .{ .field_name = "channel", .field_type = []const u8, .flag = "--channel" },
+    }, "bot-twitch", alloc) catch |e| {
         std.log.err("Couldn't parse args! {!}", .{e});
+        std.process.exit(1);
     };
-    defer args.deinit();
 
     var bot = switch (TwitchBot.init(alloc, args, handleTwitchMsg)) {
         .Ok => |bot| bot,

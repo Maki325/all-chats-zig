@@ -25,7 +25,7 @@ client: websocket.Client,
 aggregator_client: websocket.Client,
 handleTwitchMsg: HandleTwitchMsgFn,
 
-pub fn init(alloc: std.mem.Allocator, args: Args, handleTwitchMsg: HandleTwitchMsgFn) InitResult {
+pub fn init(alloc: std.mem.Allocator, args: anytype, handleTwitchMsg: HandleTwitchMsgFn) InitResult {
     var client = websocket.connect(alloc, TWITCH_ADDRESS, TWITCH_PORT, .{}) catch |e| {
         return .{ .Twitch = e };
     };
